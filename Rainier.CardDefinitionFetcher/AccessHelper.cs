@@ -43,7 +43,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             string stage1url = TPCI.PTCS.PTCSUtils.GetAuthRequest(AUTH_STAGE_1_PREFIX, AUDIENCE_VALUE, clientData, SELECTED_LANGUAGE, out string challenge, out string verifier);
 
             HttpClient httpClient = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
-            httpClient.DefaultRequestHeaders.Add("User-Agent", @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+            httpClient.DefaultRequestHeaders.Add("User-Agent", @"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0");
 
             // Stage 1 - GET /oauth2/auth
             HttpResponseMessage stage1result = httpClient.GetAsync(stage1url).Result;
@@ -71,6 +71,11 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
 
             HttpResponseMessage stage3result = httpClient.PostAsync("https://access.pokemon.com/login", stage3postbody).Result;
             string stage3payload = stage3result.Content.ReadAsStringAsync().Result;
+
+            if(stage3payload.Contains("Pardon Our Interruption"))
+            {
+                throw new Exception("Detected as bot during stage 3 call");
+            }
 
             // Stage 4 - GET /oauth2/auth
             Uri? stage4url = stage3result.Headers.Location;

@@ -18,11 +18,8 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Omukade.AutoPAR" Version="1.0.8" />
     <PackageReference Include="Spectre.Console" Version="0.45.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\Omukade.ProcedualAssemblyRewriter\Omukade.AutoPAR\Omukade.AutoPAR.csproj" />
   </ItemGroup>
 
   <ItemGroup>
