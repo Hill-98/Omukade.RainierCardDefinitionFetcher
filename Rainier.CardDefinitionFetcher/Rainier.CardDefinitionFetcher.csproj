@@ -18,37 +18,38 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Omukade.AutoPAR" Version="1.0.8" />
+    <PackageReference Include="Omukade.AutoPAR" Version="1.0.9" />
+	<PackageReference Include="Omukade.AutoPAR.BuildPipeline.Rainier" Version="1.0.9.1" />
     <PackageReference Include="Spectre.Console" Version="0.45.0" />
   </ItemGroup>
 
   <ItemGroup>
 	  <Reference Include="CardDatabase.DataAccess">
-		  <HintPath>..\..\Rainier-Assemblies\1.12.0.293233.20240306_2344_PAR\CardDatabase.DataAccess.dll</HintPath>
+		  <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\CardDatabase.DataAccess.dll</HintPath>
 		  <Private>False</Private>
 	  </Reference>
     <Reference Include="FlatBuffers.Core">
-      <HintPath>..\..\Rainier-Assemblies\1.12.0.293233.20240306_2344_PAR\FlatBuffers.Core.dll</HintPath>
+      <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\FlatBuffers.Core.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="MatchLogic">
-      <HintPath>..\..\Rainier-Assemblies\1.12.0.293233.20240306_2344_PAR\MatchLogic.dll</HintPath>
+      <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\MatchLogic.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="ClientNetworking">
-      <HintPath>..\..\Rainier-Assemblies\1.12.0.293233.20240306_2344_PAR\ClientNetworking.dll</HintPath>
+      <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\ClientNetworking.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="SharedLogicUtils">
-      <HintPath>..\..\Rainier-Assemblies\1.12.0.293233.20240306_2344_PAR\SharedLogicUtils.dll</HintPath>
+      <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\SharedLogicUtils.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="TPCI.PTCS">
-      <HintPath>..\..\Rainier-Assemblies\1.12.0.293233.20240306_2344_PAR\TPCI.PTCS.dll</HintPath>
+      <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\TPCI.PTCS.dll</HintPath>
       <Private>False</Private>
     </Reference>
 	<Reference Include="UnityEngine.CoreModule">
-		<HintPath>..\..\Rainier-Assemblies\1.12.0.293233.20240306_2344_PAR\UnityEngine.CoreModule.dll</HintPath>
+		<HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\UnityEngine.CoreModule.dll</HintPath>
 		<Private>False</Private>
 	</Reference>
   </ItemGroup>

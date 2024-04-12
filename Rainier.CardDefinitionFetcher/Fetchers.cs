@@ -38,10 +38,12 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static TPCI.PTCS.PTCSUtils;
+using ClientNetworking.Models.Account;
 
 namespace Omukade.Tools.RainierCardDefinitionFetcher
 {
-    internal static class Fetchers
+    public static class Fetchers
     {
         const string OUTPUT_FOLDER_CARD_DEFINITIONS = @"PTCGL-CardDefinitions";
         const string OUTPUT_FOLDER_CARD_DATABASE = @"PTCGL-CardDatabase";
@@ -51,7 +53,47 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
         const string OMUKADE_FAKE_BOARD_ID = "OMUKADE-FAKE-BOARD-ID";
         const string OMUKADE_FAKE_OPPONENT_ID = "OMUKADE-FAKE-OPPONENT-ID";
 
-        public static void FetchAndSaveCardDefinitions(Client client, bool leveragePreviousInvalidCardIds = false)
+        public static Client PrepareClient(SecretsConfig secrets)
+        {
+            TokenData tokenData = AccessHelper.GetTokenForUsernameAndPassword(secrets.username, secrets.password);
+
+            // Access Key is hardcoded in Client.Setup
+            const string ACCESS_KEY = "421d8904-0236-4ab4-94f5-a8a84aeb3f7b";
+
+            // DEVICE_ID is derived from, in preference:
+            // * UnityEngine.SystemInfo.deviceUniqueIdentifier
+            // * PlayerPrefs.GetString("GameVersionInfo:Identifier")
+            // * Guid.NewGuid()
+            string DEVICE_ID = Guid.NewGuid().ToString(); //"1047b8069bcaa0358004cb88aad57f5cc7dc4759";
+
+            // CLIENT_ID is derived from, in perference:
+            // * tokenData.id_token
+            // * If PlayerPrefs.GetInt("prefs-random-user") > 0, Guid.NewGuid()
+            // * UnityEngine.SystemInfo.deviceUniqueIdentifier
+            // * PlayerPrefs.GetString("GameVersionInfo:Identifier")
+            // * Guid.NewGuid()
+            string CLIENT_ID = tokenData.id_token ?? Guid.NewGuid().ToString(); // "6a9d54403b2ba18414990995b57b2632";
+
+            Client client = new ClientBuilder()
+                .WithStage(Stages.PROD)
+                .WithAccessKey(ACCESS_KEY)
+                .WithDeviceInfo(deviceId: DEVICE_ID, deviceType: null, "Windows")
+                .Create(clientId: CLIENT_ID);
+
+            client.RegisterAsync().Wait();
+            client.MakeSyncCall<string, string, TokenResponse>(client.AuthAsync, tokenData.access_token, "PJWT");
+
+            return client;
+        }
+
+        private static string GetOutputFolder()
+        {
+            if(Program.outputFolder != null) return Program.outputFolder;
+
+            return Omukade.AutoPAR.Rainier.RainierSharedDataHelper.GetSharedDataDirectory();
+        }
+
+        internal static void FetchAndSaveCardDefinitionsInteractive(Client client, bool leveragePreviousInvalidCardIds = false)
         {
             if (Program.quietFlagEnabled)
             {
@@ -64,7 +106,11 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
                     .AutoClear(false)
                     .Start(ctx => CardDefinitionFetchCore(ctx, client, leveragePreviousInvalidCardIds));
             }
+        }
 
+        public static void FetchAndSaveCardDefinitions(Client client, bool leveragePreviousInvalidCardIds = false)
+        {
+            CardDefinitionFetchCore(ctx: null, client, leveragePreviousInvalidCardIds);
         }
 
         private static void CardDefinitionFetchCore(ProgressContext? ctx, Client client, bool leveragePreviousInvalidCardIds)
@@ -72,11 +118,10 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             ConfigDocumentGetResponse setNameManifestDocument = client.GetConfigDocumentSync("set-manifest_0.0");
             SetNamesManifest setNameManifest = JsonConvert.DeserializeObject<SetNamesManifest>(setNameManifestDocument.data["manifest"].contentString)!;
 
-            var docRequests = setNameManifest.sets.Select(set => new ConfigDocumentGetRequest(set + "-compendium_0.0"));
+            IEnumerable<ConfigDocumentGetRequest> docRequests = setNameManifest.sets.Select(set => new ConfigDocumentGetRequest(set + "-compendium_0.0"));
             ConfigDocumentGetMultipleResponse cgmr = client.MakeSyncCall<IEnumerable<ConfigDocumentGetRequest>, ConfigDocumentGetMultipleResponse>(client.GetConfigDocumentsAsync, docRequests);
-            Console.WriteLine($"Now have {cgmr.documents.Count} documents");
 
-            string INVALID_CARD_IDS_FILE = Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DEFINITIONS, "invalid-card-ids.txt");
+            string INVALID_CARD_IDS_FILE = Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DEFINITIONS, "invalid-card-ids.txt");
             List<string> invalidCardIds;
             HashSet<string> previousInvalidCardIds;
             if(leveragePreviousInvalidCardIds && File.Exists(INVALID_CARD_IDS_FILE))
@@ -92,31 +137,32 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
 
             Dictionary<string, Guid> getCompendiumData(ConfigDocumentGetResponse doc) => JsonConvert.DeserializeObject<Dictionary<string, Guid>>(doc.data["compendium"].contentString)!;
 
-            ProgressTask? fetchTask = ctx?.AddTask("Fetch card definitions...");
-            if (fetchTask != null) fetchTask.MaxValue = cgmr.documents.Values.Select(doc => getCompendiumData(doc).Count).Sum();
-
-            foreach (var doc in cgmr.documents.Values)
+            ProgressTask? fetchTask = null;
+            if (ctx != null)
             {
-                var cardIds = JsonConvert.DeserializeObject<Dictionary<string, Guid>>(doc.data["compendium"].contentString)!;
+                fetchTask = ctx.AddTask("Fetch card definitions...");
+                fetchTask.MaxValue = cgmr.documents.Values.Select(doc => getCompendiumData(doc).Count).Sum();
+            }
+
+            foreach (ConfigDocumentGetResponse doc in cgmr.documents.Values)
+            {
+                Dictionary<string, Guid> cardIds = JsonConvert.DeserializeObject<Dictionary<string, Guid>>(doc.data["compendium"].contentString)!;
 
                 if (cardIds.Count == 0)
                 {
-                    //Console.WriteLine($"Skipping set {doc.id} - no cards defined in this set");
                     continue;
                 }
-
-                //Console.WriteLine($"Fetch cards in set {doc.id} ({cardIds.Count})");
 
                 string setName = doc.id.Replace("-compendium_0.0", "");
                 if (fetchTask != null) fetchTask.Description = $"Fetch card definitions ({setName})";
 
-                string setFolder = Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DEFINITIONS, setName);
+                string setFolder = Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DEFINITIONS, setName);
                 Directory.CreateDirectory(setFolder);
 
                 var cardIdData = new { cardIDs = (IEnumerable<string>)cardIds.Keys.Where(id => !invalidCardIds.Contains(id)).ToList() };
 
-                var queryResultRaw = client.MakeSyncCall<string, object, QueryResponse>(client.QueryAsyncWithJsonContext, "card-get-carddata", cardIdData);
-                var queryResult = queryResultRaw.resultAsJson<CardDataResponse>();
+                QueryResponse queryResultRaw = client.MakeSyncCall<string, object, QueryResponse>(client.QueryAsyncWithJsonContext, "card-get-carddata", cardIdData);
+                CardDataResponse queryResult = queryResultRaw.resultAsJson<CardDataResponse>();
                 List<JObject> queryResultCardData = JsonConvert.DeserializeObject<List<JObject>>(queryResult.cardData)!;
 
                 const int ERR_INVALID_CARDIDS_CODE = 34103;
@@ -197,7 +243,6 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
         {
             foreach(GameMode mode in Enum.GetValues<GameMode>())
             {
-                Console.WriteLine($"Fetch game data for mode {mode}...");
                 FetchAndSaveGamemodeData(client, mode);
             }
         }
@@ -207,71 +252,75 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             BoardEntity bakedBoard = new BoardEntity(mode, false) { isPlayer1 = false, entityID = fakeBoardEntityToReplace, currentPos = BoardPos.Board, /* appliedStatusEffects = [], entityMetaData = {}, */ };
             GameContext bakedGameContext = new GameContext("game-get-gamedata") { board = bakedBoard };
 
-            var queryResultRaw = client.MakeSyncCall<string, object, QueryResponse>(client.QueryAsyncWithJsonContext, "game-get-gamedata", bakedGameContext);
+            QueryResponse queryResultRaw = client.MakeSyncCall<string, object, QueryResponse>(client.QueryAsyncWithJsonContext, "game-get-gamedata", bakedGameContext);
             GameDataResponse gdrRaw = JsonConvert.DeserializeObject<GameDataResponse>(queryResultRaw.resultAsString().Replace(fakeBoardEntityToReplace, OMUKADE_FAKE_BOARD_ID));
-            File.WriteAllText(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DEFINITIONS, $"game-data-{mode}.json"), gdrRaw.gameData);
+            File.WriteAllText(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DEFINITIONS, $"game-data-{mode}.json"), gdrRaw.gameData);
         }
 
         public static void FetchAndSaveItemDatabase(Client client)
         {
-            Directory.CreateDirectory(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DATABASE));
+            Directory.CreateDirectory(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DATABASE));
             ConfigDocumentGetResponse manifestDocument = client.GetConfigDocumentSync("item-set-database_0.0");
 
-            File.WriteAllText(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DATABASE, "item-set-database.json"), manifestDocument.data["itemsets"].contentString);
+            File.WriteAllText(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DATABASE, "item-set-database.json"), manifestDocument.data["itemsets"].contentString);
         }
 
-        public static void FetchAndSaveCardDatabase(Client client)
+        internal static void FetchAndSaveCardDatabaseInteractive(Client client)
         {
-            Directory.CreateDirectory(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DATABASE));
+            AnsiConsole.Progress()
+                .HideCompleted(false)
+                .AutoClear(false)
+                .Start(ctx => FetchAndSaveCardDatabaseCore(client, ctx));
+        }
+
+        public static void FetchAndSaveCardDatabase(Client client) => FetchAndSaveCardDatabaseCore(client, ctx: null);
+
+        private static void FetchAndSaveCardDatabaseCore(Client client, ProgressContext? ctx)
+        {
+            Directory.CreateDirectory(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DATABASE));
 
             ConfigCardDataTablesProvider.ConfigSettings configToUse = ConfigCardDataTablesProvider.DefaultConfigSettings;
             configToUse.batchDownloadConfigs = true;
 
             ConfigDocumentGetResponse manifestDocument = client.GetConfigDocumentSync(configToUse.manifestConfigName + "_" + configToUse.manifestConfigVer);
-            List<string> manifestConfig = JsonConvert.DeserializeObject<List<string>>(manifestDocument.data[configToUse.manifestConfigKey].contentString);
+            List<string> manifestConfig = JsonConvert.DeserializeObject<List<string>>(manifestDocument.data[configToUse.manifestConfigKey].contentString)!;
 
-            AnsiConsole.Progress()
-                .HideCompleted(false)
-                .AutoClear(false)
-                .Start(ctx =>
-                {
-                    var fetchTask = ctx.AddTask("Fetch card DBs for set");
+            ProgressTask? fetchTask = null;
+            if(ctx != null) fetchTask = ctx.AddTask("Fetch card DBs for set");
 
-                    string[] ALL_LANGUAGES = new string[] { "en" };
+            string[] ALL_LANGUAGES = new string[] { "en" };
 
-                    int numDbsToFetch = ALL_LANGUAGES.Length * manifestConfig.Count;
-                    fetchTask.MaxValue = numDbsToFetch;
+            int numDbsToFetch = ALL_LANGUAGES.Length * manifestConfig.Count;
+            if(fetchTask != null) fetchTask.MaxValue = numDbsToFetch;
 
+            IEnumerable<string> allDatabasesToFetch = ALL_LANGUAGES.SelectMany(lang => manifestConfig.Select(db => "card-database-" + string.Format(db, lang) + "_0.0"));
+            foreach (string dbName in allDatabasesToFetch)
+            {
+                ConfigDocumentGetResponse dbRaw = client.GetConfigDocumentSync(dbName);
+                File.WriteAllBytes(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DATABASE, dbName + ".db"), dbRaw.data["table"].contentBinary);
 
-                    IEnumerable<string> allDatabasesToFetch = ALL_LANGUAGES.SelectMany(lang => manifestConfig.Select(db => "card-database-" + string.Format(db, lang) + "_0.0"));
-                    foreach (string dbName in allDatabasesToFetch)
-                    {
-                        ConfigDocumentGetResponse dbRaw = client.GetConfigDocumentSync(dbName);
-                        File.WriteAllBytes(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DATABASE, dbName + ".db"), dbRaw.data["table"].contentBinary);
+                string jsonFilename = Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DATABASE, dbName + ".json");
+                WriteDatatableToFile(dbRaw.data["table"].contentBinary, DataTableCustomFormatter.Deserialize, jsonFilename);
 
-                        string jsonFilename = Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DATABASE, dbName + ".json");
-                        WriteDatatableToFile(dbRaw.data["table"].contentBinary, DataTableCustomFormatter.Deserialize, jsonFilename);
-
-                        fetchTask.Increment(1.0d);
-                    }
-                });
+                fetchTask?.Increment(1.0d);
+            }
         }
 
         public static void FetchAndSaveCardActions(Client client)
         {
-            Directory.CreateDirectory(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_ACTIONS));
+            Directory.CreateDirectory(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_ACTIONS));
 
             ConfigDocumentGetResponse actionsDocument = client.GetConfigDocumentSync("actionsTable_0.0");
-            File.WriteAllBytes(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_ACTIONS, "actions.db"), actionsDocument.data["actionsTable"].contentBinary);
+            File.WriteAllBytes(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_ACTIONS, "actions.db"), actionsDocument.data["actionsTable"].contentBinary);
 
-            string jsonFilename = Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_ACTIONS, "actions.json");
+            string jsonFilename = Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_ACTIONS, "actions.json");
             WriteDatatableToFile(actionsDocument.data["actionsTable"].contentBinary, DataTableCustomFormatter.Deserialize, jsonFilename);
         }
 
         public static void FetchAndSaveAiCustomizationData(Client client)
         {
             string aiCustomization = FetchAiCustomizationData(client);
-            string aiCustomizationFolder = Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DEFINITIONS, "ai-customizations");
+            string aiCustomizationFolder = Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DEFINITIONS, "ai-customizations");
             Directory.CreateDirectory(aiCustomizationFolder);
             File.WriteAllText(Path.Combine(aiCustomizationFolder, $"ai-customization-{DateTime.UtcNow.Ticks}.json"), aiCustomization);
         }
@@ -280,7 +329,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
         {
             string fakeBoardEntityToReplace = Guid.NewGuid().ToString();
             OfflineMatchContext omc = new OfflineMatchContext("offline-get-ai-customizations") { gameMode = GameMode.Standard };
-            var queryResultRaw = client.MakeSyncCall<string, object, QueryResponse>(client.QueryAsyncWithJsonContext, "offline-get-ai-customizations", omc);
+            QueryResponse queryResultRaw = client.MakeSyncCall<string, object, QueryResponse>(client.QueryAsyncWithJsonContext, "offline-get-ai-customizations", omc);
 
             OfflineMatchResponse gdrRaw = queryResultRaw.resultAsJson<OfflineMatchResponse>();
             return queryResultRaw.resultAsString();
@@ -288,30 +337,30 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
 
         public static void LoadActionsDb()
         {
-            DataTable dt = DataTableCustomFormatter.Deserialize(File.ReadAllBytes(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_ACTIONS, "actions.db")), enableCompression: false);
-            File.WriteAllText(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_ACTIONS, "actions.json"), JsonConvert.SerializeObject(dt, Formatting.Indented));
+            DataTable dt = DataTableCustomFormatter.Deserialize(File.ReadAllBytes(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_ACTIONS, "actions.db")), enableCompression: false);
+            File.WriteAllText(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_ACTIONS, "actions.json"), JsonConvert.SerializeObject(dt, Formatting.Indented));
         }
 
         public static void LoadCardDb()
         {
-            DataTable dt = DataTableCustomFormatter.Deserialize(File.ReadAllBytes(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DATABASE, "card-database-swsh11_0_en_0.0.db")), enableCompression: false);
-            File.WriteAllText(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DATABASE, "card-database-swsh11_0_en_0.0.json"), JsonConvert.SerializeObject(dt, Formatting.Indented));
+            DataTable dt = DataTableCustomFormatter.Deserialize(File.ReadAllBytes(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DATABASE, "card-database-swsh11_0_en_0.0.db")), enableCompression: false);
+            File.WriteAllText(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DATABASE, "card-database-swsh11_0_en_0.0.json"), JsonConvert.SerializeObject(dt, Formatting.Indented));
         }
 
         public static QuestQueryResponse? FetchQuestData(Client client)
         {
-            Directory.CreateDirectory(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_QUEST_DATA));
+            Directory.CreateDirectory(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_QUEST_DATA));
 
             QuestContext questContext = new QuestContext("quest-setup-get-all-quests");
-            var queryResultRaw = client.MakeSyncCall<string, object, QueryResponse>(client.QueryAsyncWithJsonContext, questContext.query, questContext);
-            var questData = queryResultRaw.resultAsJson<QuestQueryResponse>();
+            QueryResponse queryResultRaw = client.MakeSyncCall<string, object, QueryResponse>(client.QueryAsyncWithJsonContext, questContext.query, questContext);
+            QuestQueryResponse questData = queryResultRaw.resultAsJson<QuestQueryResponse>();
 
             JsonSerializerSettings jss = new JsonSerializerSettings
             {
                 Formatting = Formatting.Indented,
                 Converters = new List<JsonConverter> { new StringEnumConverter(typeof(Newtonsoft.Json.Serialization.DefaultNamingStrategy)) }
             };
-            File.WriteAllText(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_QUEST_DATA, "current-quest-data.json"), JsonConvert.SerializeObject(questData, jss));
+            SerializeJsonToFile(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_QUEST_DATA, "current-quest-data.json"), questData, jss);
 
             return questData;
         }
@@ -320,12 +369,12 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
         {
             string[] dbNames = new string[] { "rules-expanded_0.0", "rules-standard_0.0", "rules-dev_0.0" };
 
-            Directory.CreateDirectory(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_DECKVALIDATION_DATA));
+            Directory.CreateDirectory(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_DECKVALIDATION_DATA));
 
             foreach(string dbName in dbNames)
             {
                 ConfigDocumentGetResponse dbRaw = client.GetConfigDocumentSync(dbName);
-                File.WriteAllText(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_DECKVALIDATION_DATA, dbName + ".json"), dbRaw.data["rules"].contentString);
+                File.WriteAllText(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_DECKVALIDATION_DATA, dbName + ".json"), dbRaw.data["rules"].contentString);
             }
         }
 
@@ -344,7 +393,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             const string FEATUREFLAG_DOCUMENT_NAME = "feature-flags_0.0";
 
             ConfigDocumentGetResponse flagsRaw = client.GetConfigDocumentSync(FEATUREFLAG_DOCUMENT_NAME);
-            File.WriteAllText(Path.Combine(Program.outputFolder, OUTPUT_FOLDER_CARD_DEFINITIONS, "feature-flags.json"), flagsRaw.data["featureMap"].contentString);
+            File.WriteAllText(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DEFINITIONS, "feature-flags.json"), flagsRaw.data["featureMap"].contentString);
         }
 
         private static void WriteDatatableToFile(byte[] dbDocumentValue, Func<byte[], bool, DataTable> customFormatterImplementation, string filename)
@@ -357,6 +406,13 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             };
 
             serializer.Serialize(writer, dt);
+        }
+
+        private static void SerializeJsonToFile(string filename, object obj, JsonSerializerSettings? settings = null)
+        {
+            using StreamWriter writer = new StreamWriter(filename, append: false);
+            JsonSerializer serializer = JsonSerializer.Create(settings);
+            serializer.Serialize(writer, obj);
         }
     }
 }

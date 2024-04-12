@@ -46,7 +46,6 @@ internal class Program
     const string ARG_HELP_SHORT = "-h";
     const string ARG_NO_UPDATE_CHECK = "--no-update-check";
     const string ARG_QUIET = "--quiet";
-    const string ARG_FETCH_FRIENDS = "--fetch-friends";
     const string ARG_FETCH_FEATUREFLAGS = "--fetch-featureflags";
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
@@ -101,37 +100,11 @@ internal class Program
         }
 
         // Parse output folder if needed
-        outputFolder = GetOutputFolder(args);
+        outputFolder = Program.ParseOutputFolderFromArgs(args);
 
         WriteIfNotQuiet("Logging in...");
-        TokenData tokenData = AccessHelper.GetTokenForUsernameAndPassword(secrets.username, secrets.password);
+        Client client = Fetchers.PrepareClient(secrets);
         WriteIfNotQuiet("Logged in Successfully");
-
-        // Access Key is hardcoded in Client.Setup
-        const string ACCESS_KEY = "421d8904-0236-4ab4-94f5-a8a84aeb3f7b";
-
-        // DEVICE_ID is derived from, in preference:
-        // * UnityEngine.SystemInfo.deviceUniqueIdentifier
-        // * PlayerPrefs.GetString("GameVersionInfo:Identifier")
-        // * Guid.NewGuid()
-        string DEVICE_ID = Guid.NewGuid().ToString(); //"1047b8069bcaa0358004cb88aad57f5cc7dc4759";
-
-        // CLIENT_ID is derived from, in perference:
-        // * tokenData.id_token
-        // * If PlayerPrefs.GetInt("prefs-random-user") > 0, Guid.NewGuid()
-        // * UnityEngine.SystemInfo.deviceUniqueIdentifier
-        // * PlayerPrefs.GetString("GameVersionInfo:Identifier")
-        // * Guid.NewGuid()
-        string CLIENT_ID = tokenData.id_token ?? Guid.NewGuid().ToString(); // "6a9d54403b2ba18414990995b57b2632";
-
-        Client client = new ClientBuilder()
-            .WithStage(Stages.PROD)
-            .WithAccessKey(ACCESS_KEY)
-            .WithDeviceInfo(deviceId: DEVICE_ID, deviceType: null, "Windows")
-            .Create(clientId: CLIENT_ID);
-
-        client.RegisterAsync().Wait();
-        client.MakeSyncCall<string, string, TokenResponse>(client.AuthAsync, tokenData.access_token, "PJWT");
 
         bool anyArgWasSpecified = false;
         if (args.Contains(ARG_FETCH_ITEMDB))
@@ -149,7 +122,7 @@ internal class Program
         if (args.Contains(ARG_FETCH_CARDDB))
         {
             anyArgWasSpecified = true;
-            Fetchers.FetchAndSaveCardDatabase(client);
+            Fetchers.FetchAndSaveCardDatabaseInteractive(client);
         }
 
         if (args.Contains(ARG_FETCH_CARDDEFINITIONS) || args.Contains(ARG_FETCH_CARDDEFINITIONS_SHORTER))
@@ -183,12 +156,6 @@ internal class Program
         {
             anyArgWasSpecified = true;
             Fetchers.FetchAndSaveDeckValidationRules(client);
-        }
-
-        if(args.Contains(ARG_FETCH_FRIENDS))
-        {
-            anyArgWasSpecified = true;
-            Fetchers.FetchFriends(client, tokenData.access_token);
         }
 
         if(args.Contains(ARG_FETCH_FEATUREFLAGS))
@@ -297,7 +264,7 @@ internal class Program
         return secrets;
     }
 
-    private static string GetOutputFolder(string[] args)
+    private static string ParseOutputFolderFromArgs(string[] args)
     {
         string? outputFolder;
         if (args.Contains(ARG_OUTPUT_FOLDER))
@@ -361,7 +328,6 @@ Fetch arguments (as many as desired can be specified):
 
 --fetch-rules           Fetches the game rules.
 --fetch-aidecks         Fetches a selection of decks used by the AI.
---fetch-friends         Fetches the current user's friend list.
 --interactive           Enters an interactive prompt allowing arbitrary documents to be downloaded, given their name.
 
 Omukade Cheyenne servers typically only need the results of --fetch-carddefinitions --fetch-rules --fetch-featureflags
