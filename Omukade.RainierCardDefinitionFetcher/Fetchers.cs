@@ -56,7 +56,11 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
         public static Client PrepareClient(SecretsConfig secrets)
         {
             TokenData tokenData = AccessHelper.GetTokenForUsernameAndPassword(secrets.username, secrets.password);
+            return PrepareClientWithToken(tokenData);
+        }
 
+        public static Client PrepareClientWithToken(TokenData tokenData)
+        {
             // Access Key is hardcoded in Client.Setup
             const string ACCESS_KEY = "421d8904-0236-4ab4-94f5-a8a84aeb3f7b";
 
@@ -123,16 +127,14 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
 
             string INVALID_CARD_IDS_FILE = Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DEFINITIONS, "invalid-card-ids.txt");
             List<string> invalidCardIds;
-            HashSet<string> previousInvalidCardIds;
             if(leveragePreviousInvalidCardIds && File.Exists(INVALID_CARD_IDS_FILE))
             {
-                previousInvalidCardIds = new HashSet<string>(File.ReadAllLines(INVALID_CARD_IDS_FILE));
-                invalidCardIds = previousInvalidCardIds.ToList();
+                invalidCardIds = new List<string>(File.ReadAllLines(INVALID_CARD_IDS_FILE));
             }
             else
             {
-                previousInvalidCardIds = new HashSet<string>();
-                invalidCardIds = new List<string>();
+                // Speed up fetching for UNM by always assuming UNM 186 (Blaine's Quiz Show) is invalid since it's not implemented, and probably never will due to Rainier's UI archetecture.
+                invalidCardIds = new List<string>() { "sm11_186", "sm11_186_ph" };
             }
 
             Dictionary<string, Guid> getCompendiumData(ConfigDocumentGetResponse doc) => JsonConvert.DeserializeObject<Dictionary<string, Guid>>(doc.data["compendium"].contentString)!;

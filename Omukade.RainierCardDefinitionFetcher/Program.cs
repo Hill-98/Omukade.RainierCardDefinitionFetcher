@@ -47,6 +47,7 @@ internal class Program
     const string ARG_NO_UPDATE_CHECK = "--no-update-check";
     const string ARG_QUIET = "--quiet";
     const string ARG_FETCH_FEATUREFLAGS = "--fetch-featureflags";
+    const string ARG_TOKEN = "--token=";
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     static internal string outputFolder;
@@ -102,9 +103,22 @@ internal class Program
         // Parse output folder if needed
         outputFolder = Program.ParseOutputFolderFromArgs(args);
 
-        WriteIfNotQuiet("Logging in...");
-        Client client = Fetchers.PrepareClient(secrets);
-        WriteIfNotQuiet("Logged in Successfully");
+        Client client;
+        string? tokenArg = args.FirstOrDefault(arg => arg.StartsWith(ARG_TOKEN));
+        if(tokenArg != null)
+        {
+            WriteIfNotQuiet("Preparing client using supplied token...");
+            TokenData tokenData = new() { access_token = tokenArg.Substring(ARG_TOKEN.Length) };
+            Console.WriteLine($"Supplied token is {tokenData.access_token}");
+            client = Fetchers.PrepareClientWithToken(tokenData);
+            WriteIfNotQuiet("Logged in Successfully");
+        }
+        else
+        {
+            WriteIfNotQuiet("Logging in...");
+            client = Fetchers.PrepareClient(secrets);
+            WriteIfNotQuiet("Logged in Successfully");
+        }
 
         bool anyArgWasSpecified = false;
         if (args.Contains(ARG_FETCH_ITEMDB))
@@ -128,7 +142,7 @@ internal class Program
         if (args.Contains(ARG_FETCH_CARDDEFINITIONS) || args.Contains(ARG_FETCH_CARDDEFINITIONS_SHORTER))
         {
             anyArgWasSpecified = true;
-            Fetchers.FetchAndSaveCardDefinitions(client, leveragePreviousInvalidCardIds: !args.Contains(ARG_CARDDEFS_IGNORE_INVALID_CARDS_FILE));
+            Fetchers.FetchAndSaveCardDefinitionsInteractive(client, leveragePreviousInvalidCardIds: !args.Contains(ARG_CARDDEFS_IGNORE_INVALID_CARDS_FILE));
         }
 
         if (args.Contains(ARG_FETCH_RULES))
@@ -340,6 +354,7 @@ Other arguments:
 -h / --help             This help text. Will also appear automatically if run with no fetch arguments, or no arguments at all.
 --no-update-check       Skips checking for Rainier updates (eg, if started from another program that also did this check)
 --quiet                 Supresses all non-error messages.
+--token=abc123          Manually specify the token to use, instead of automatically logging in.
 """
         );
     }

@@ -42,6 +42,7 @@ Fetch arguments (as many as desired can be specified):
 
 --fetch-rules           Fetches the game rules.
 --fetch-aidecks         Fetches a selection of decks used by the AI.
+--interactive           Enters an interactive prompt allowing arbitrary documents to be downloaded, given their name.
 
 Omukade Cheyenne servers typically only need the results of --fetch-carddefinitions --fetch-rules
 
@@ -51,6 +52,9 @@ Output arguments:
 
 Other arguments:
 -h / --help             This help text. Will also appear automatically if run with no fetch arguments, or no arguments at all.
+--no-update-check       Skips checking for Rainier updates (eg, if started from another program that also did this check)
+--quiet                 Supresses all non-error messages.
+--token=abc123          Manually specify the token to use, instead of automatically logging in.
 ```
 
 ## Compiling
