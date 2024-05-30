@@ -103,7 +103,7 @@ internal class Program
         // Parse output folder if needed
         outputFolder = Program.ParseOutputFolderFromArgs(args);
 
-        Client client;
+        IClient client;
         string? tokenArg = args.FirstOrDefault(arg => arg.StartsWith(ARG_TOKEN));
         if(tokenArg != null)
         {

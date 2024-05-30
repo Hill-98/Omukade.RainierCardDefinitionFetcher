@@ -53,13 +53,13 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
         const string OMUKADE_FAKE_BOARD_ID = "OMUKADE-FAKE-BOARD-ID";
         const string OMUKADE_FAKE_OPPONENT_ID = "OMUKADE-FAKE-OPPONENT-ID";
 
-        public static Client PrepareClient(SecretsConfig secrets)
+        public static IClient PrepareClient(SecretsConfig secrets)
         {
             TokenData tokenData = AccessHelper.GetTokenForUsernameAndPassword(secrets.username, secrets.password);
             return PrepareClientWithToken(tokenData);
         }
 
-        public static Client PrepareClientWithToken(TokenData tokenData)
+        public static IClient PrepareClientWithToken(TokenData tokenData)
         {
             // Access Key is hardcoded in Client.Setup
             const string ACCESS_KEY = "421d8904-0236-4ab4-94f5-a8a84aeb3f7b";
@@ -78,11 +78,12 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             // * Guid.NewGuid()
             string CLIENT_ID = tokenData.id_token ?? Guid.NewGuid().ToString(); // "6a9d54403b2ba18414990995b57b2632";
 
-            Client client = new ClientBuilder()
+            IClient client = new ClientBuilder()
                 .WithStage(Stages.PROD)
                 .WithAccessKey(ACCESS_KEY)
                 .WithDeviceInfo(deviceId: DEVICE_ID, deviceType: null, "Windows")
-                .Create(clientId: CLIENT_ID);
+                .WithInstallationId(CLIENT_ID)
+                .Build();
 
             client.RegisterAsync().Wait();
             client.MakeSyncCall<string, string, TokenResponse>(client.AuthAsync, tokenData.access_token, "PJWT");
@@ -97,7 +98,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             return Omukade.AutoPAR.Rainier.RainierSharedDataHelper.GetSharedDataDirectory();
         }
 
-        internal static void FetchAndSaveCardDefinitionsInteractive(Client client, bool leveragePreviousInvalidCardIds = false)
+        internal static void FetchAndSaveCardDefinitionsInteractive(IClient client, bool leveragePreviousInvalidCardIds = false)
         {
             if (Program.quietFlagEnabled)
             {
@@ -112,12 +113,12 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             }
         }
 
-        public static void FetchAndSaveCardDefinitions(Client client, bool leveragePreviousInvalidCardIds = false)
+        public static void FetchAndSaveCardDefinitions(IClient client, bool leveragePreviousInvalidCardIds = false)
         {
             CardDefinitionFetchCore(ctx: null, client, leveragePreviousInvalidCardIds);
         }
 
-        private static void CardDefinitionFetchCore(ProgressContext? ctx, Client client, bool leveragePreviousInvalidCardIds)
+        private static void CardDefinitionFetchCore(ProgressContext? ctx, IClient client, bool leveragePreviousInvalidCardIds)
         {
             ConfigDocumentGetResponse setNameManifestDocument = client.GetConfigDocumentSync("set-manifest_0.0");
             SetNamesManifest setNameManifest = JsonConvert.DeserializeObject<SetNamesManifest>(setNameManifestDocument.data["manifest"].contentString)!;
@@ -241,14 +242,14 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             }
         }
 
-        public static void FetchAndSaveAllGamemodeData(Client client)
+        public static void FetchAndSaveAllGamemodeData(IClient client)
         {
             foreach(GameMode mode in Enum.GetValues<GameMode>())
             {
                 FetchAndSaveGamemodeData(client, mode);
             }
         }
-        public static void FetchAndSaveGamemodeData(Client client, GameMode mode)
+        public static void FetchAndSaveGamemodeData(IClient client, GameMode mode)
         {
             string fakeBoardEntityToReplace = Guid.NewGuid().ToString();
             BoardEntity bakedBoard = new BoardEntity(mode, false) { isPlayer1 = false, entityID = fakeBoardEntityToReplace, currentPos = BoardPos.Board, /* appliedStatusEffects = [], entityMetaData = {}, */ };
@@ -259,7 +260,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             File.WriteAllText(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DEFINITIONS, $"game-data-{mode}.json"), gdrRaw.gameData);
         }
 
-        public static void FetchAndSaveItemDatabase(Client client)
+        public static void FetchAndSaveItemDatabase(IClient client)
         {
             Directory.CreateDirectory(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DATABASE));
             ConfigDocumentGetResponse manifestDocument = client.GetConfigDocumentSync("item-set-database_0.0");
@@ -267,7 +268,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             File.WriteAllText(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DATABASE, "item-set-database.json"), manifestDocument.data["itemsets"].contentString);
         }
 
-        internal static void FetchAndSaveCardDatabaseInteractive(Client client)
+        internal static void FetchAndSaveCardDatabaseInteractive(IClient client)
         {
             AnsiConsole.Progress()
                 .HideCompleted(false)
@@ -275,9 +276,9 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
                 .Start(ctx => FetchAndSaveCardDatabaseCore(client, ctx));
         }
 
-        public static void FetchAndSaveCardDatabase(Client client) => FetchAndSaveCardDatabaseCore(client, ctx: null);
+        public static void FetchAndSaveCardDatabase(IClient client) => FetchAndSaveCardDatabaseCore(client, ctx: null);
 
-        private static void FetchAndSaveCardDatabaseCore(Client client, ProgressContext? ctx)
+        private static void FetchAndSaveCardDatabaseCore(IClient client, ProgressContext? ctx)
         {
             Directory.CreateDirectory(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DATABASE));
 
@@ -308,7 +309,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             }
         }
 
-        public static void FetchAndSaveCardActions(Client client)
+        public static void FetchAndSaveCardActions(IClient client)
         {
             Directory.CreateDirectory(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_ACTIONS));
 
@@ -319,7 +320,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             WriteDatatableToFile(actionsDocument.data["actionsTable"].contentBinary, DataTableCustomFormatter.Deserialize, jsonFilename);
         }
 
-        public static void FetchAndSaveAiCustomizationData(Client client)
+        public static void FetchAndSaveAiCustomizationData(IClient client)
         {
             string aiCustomization = FetchAiCustomizationData(client);
             string aiCustomizationFolder = Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DEFINITIONS, "ai-customizations");
@@ -327,7 +328,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             File.WriteAllText(Path.Combine(aiCustomizationFolder, $"ai-customization-{DateTime.UtcNow.Ticks}.json"), aiCustomization);
         }
 
-        public static string FetchAiCustomizationData(Client client)
+        public static string FetchAiCustomizationData(IClient client)
         {
             string fakeBoardEntityToReplace = Guid.NewGuid().ToString();
             OfflineMatchContext omc = new OfflineMatchContext("offline-get-ai-customizations") { gameMode = GameMode.Standard };
@@ -349,7 +350,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             File.WriteAllText(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_CARD_DATABASE, "card-database-swsh11_0_en_0.0.json"), JsonConvert.SerializeObject(dt, Formatting.Indented));
         }
 
-        public static QuestQueryResponse? FetchQuestData(Client client)
+        public static QuestQueryResponse? FetchQuestData(IClient client)
         {
             Directory.CreateDirectory(Path.Combine(Fetchers.GetOutputFolder(), OUTPUT_FOLDER_QUEST_DATA));
 
@@ -367,7 +368,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             return questData;
         }
 
-        public static void FetchAndSaveDeckValidationRules(Client client)
+        public static void FetchAndSaveDeckValidationRules(IClient client)
         {
             string[] dbNames = new string[] { "rules-expanded_0.0", "rules-standard_0.0", "rules-dev_0.0" };
 
@@ -380,7 +381,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             }
         }
 
-        public static void FetchFriends(Client client, string ptcsJwt)
+        public static void FetchFriends(IClient client, string ptcsJwt)
         {
             List<string> profileKeys = new() { "season-rank" };
             GetAllFriendsResponse friendData = client.MakeSyncCall<string, List<string>, GetAllFriendsResponse>(client.GetAllFriendsAsync, ptcsJwt, profileKeys);
@@ -390,7 +391,7 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             }
         }
 
-        public static void FetchFeatureFlags(Client client)
+        public static void FetchFeatureFlags(IClient client)
         {
             const string FEATUREFLAG_DOCUMENT_NAME = "feature-flags_0.0";
 
