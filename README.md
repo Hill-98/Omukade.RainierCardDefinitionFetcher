@@ -1,8 +1,9 @@
 ﻿# Rainier Card Definition Fetcher
 ![logo](logo.png)
 
-This is a small helper program used for both Omukade development and fetching card and rule data used to run the Omukade family of TCGL servers.
-**You need this to run an Omukade server.**
+This is a small library and standalone tool used for both Omukade development and fetching card and rule data used to run the Omukade family of TCGL servers.
+
+**NOTE: As of v1.0.15, this no longer requires seperate installation, and is included with Omukade servers.**
 
 ## Requirements
 * [.NET 6 Runtime or SDK](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) for your platform
@@ -10,7 +11,10 @@ This is a small helper program used for both Omukade development and fetching ca
 * Supports Windows x64 and Linux x64 + ARM64
 * For developing, Visual Studio 2022 (any edition) with C#, and [Procedual Assembly Rewriter](https://github.com/Hastwell/Omukade.ProcedualAssemblyRewriter)
 
-## Usage
+## Standalone Usage
+
+In addition to being an included library in server applications, this tool can be run independently for advanced scenarios. For basic use of Omukade software,
+this should usually not be required.
 
 Before running this command, populate the file `secrets.json` in the app's directory with your Pokemon Trainer's Club account. This account is used to fetch
 data from the TCGL servers. eg:
@@ -60,22 +64,13 @@ Other arguments:
 ## Compiling
 
 ### Rainier Dependencies with AutoPAR
-Before building this project, you'll need to run ManualPAR (part of the [Procedual Assembly Rewriter](https://github.com/Hastwell/Omukade.ProcedualAssemblyRewriter)) against the TCGL assemblies to produce a version
-with public members that can be accessed by this tool.
-
-These assemblies need to be located in:
-```
-[your sources folder]
-|- Rainier-Assemblies
-|  |- 1.3.11.156349.20221208_0543_PAR (or whatever version is latest)
-|
-|- Rainier.CardDefinitionFetcher
-|  |- Rainier.CardDefinitionFetcher.sln
-```
+When checking out a project using AutoPAR for the first time, you may see errors related to types and assemblies not found.
+The `Omukade.AutoPAR.BuildPipeline.Rainier` package will fetch and prepare these dependencies for you when attempting a build.
+No manual action should be needed, although client updates may require changing referenced libraries (eg, old libs removed, new ones added that are now required)
 
 ### Building
 * Use Visual Studio 2022 or later, build the project.
-* With the .NET 6 SDK, `dotnet build Rainier.CardDefinitionFetcher.sln`
+* With the .NET 6 SDK, `dotnet build Omukade.CardDefinitionFetcher.sln`
 
 ## License
 This software is licensed under the terms of the [GNU AGPL v3.0](https://www.gnu.org/licenses/agpl-3.0.en.html)

@@ -10,12 +10,13 @@
 	<Authors>Hastwell,Omukade</Authors>
 	<Company>Electrosheep Networks</Company>
 	<Copyright>(c) 2021-2024 Electrosheep Networks</Copyright>
-	<PackageProjectUrl>https://github.com/Hastwell/Rainier.CardDefinitionFetcher</PackageProjectUrl>
+	<PackageProjectUrl>https://github.com/Hastwell/Omukade.RainierCardDefinitionFetcher</PackageProjectUrl>
 	<PackageIcon>package-icon.png</PackageIcon>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<PackageTags>omukade,definition</PackageTags>
 	  <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
 	  <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+	  <Description>Fetches card definitions used by Omukade servers (eg, Cheyenne)</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
