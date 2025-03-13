@@ -53,9 +53,9 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
         const string OMUKADE_FAKE_BOARD_ID = "OMUKADE-FAKE-BOARD-ID";
         const string OMUKADE_FAKE_OPPONENT_ID = "OMUKADE-FAKE-OPPONENT-ID";
 
-        public static IClient PrepareClient(SecretsConfig secrets)
+        public static IClient PrepareClient()
         {
-            TokenData tokenData = AccessHelper.GetTokenForUsernameAndPassword(secrets.username, secrets.password);
+            TokenData tokenData = AccessHelper.GetTokenForManuallyLogin();
             return PrepareClientWithToken(tokenData);
         }
 

@@ -14,6 +14,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Omukade.AutoPAR", "..\Omukade.ProcedualAssemblyRewriter\Omukade.AutoPAR\Omukade.AutoPAR.csproj", "{C335AA00-8011-B769-47C7-2ABBFD5FD6F4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,6 +26,10 @@ Global
 		{FE80BA21-2C09-4A58-890A-B5F56F9EB8BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE80BA21-2C09-4A58-890A-B5F56F9EB8BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FE80BA21-2C09-4A58-890A-B5F56F9EB8BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C335AA00-8011-B769-47C7-2ABBFD5FD6F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C335AA00-8011-B769-47C7-2ABBFD5FD6F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C335AA00-8011-B769-47C7-2ABBFD5FD6F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C335AA00-8011-B769-47C7-2ABBFD5FD6F4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

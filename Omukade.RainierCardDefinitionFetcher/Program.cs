@@ -58,9 +58,6 @@ internal class Program
     {
         quietFlagEnabled = args.Contains(ARG_QUIET);
 
-        // Load secrets
-        SecretsConfig secrets = LoadSecrets();
-
         if(!args.Contains(ARG_NO_UPDATE_CHECK))
         {
             Console.WriteLine("Checking for Rainier updates...");
@@ -82,7 +79,7 @@ internal class Program
         WriteIfNotQuiet("Initializing AutoPAR...");
         AssemblyLoadInterceptor.Initialize(RainierFetcher.UpdateDirectory);
 
-        PostParMain(args, secrets);
+        PostParMain(args);
     }
 
     private static void WriteIfNotQuiet(string message)
@@ -90,7 +87,7 @@ internal class Program
         if(!quietFlagEnabled) Console.WriteLine(message);
     }
 
-    private static void PostParMain(string[] args, SecretsConfig secrets)
+    private static void PostParMain(string[] args)
     {
         WriteIfNotQuiet("Rainer Card Definition Fetcher");
 
@@ -116,7 +113,7 @@ internal class Program
         else
         {
             WriteIfNotQuiet("Logging in...");
-            client = Fetchers.PrepareClient(secrets);
+            client = Fetchers.PrepareClient();
             WriteIfNotQuiet("Logged in Successfully");
         }
 
@@ -233,49 +230,6 @@ internal class Program
             Console.WriteLine("No fetch argument was specified.");
             ShowHelpText();
         }
-    }
-
-    private static SecretsConfig LoadSecrets()
-    {
-        const string SECRETS_FILE = "secrets.json";
-        const string SECRETS_EXAMPLE_FILE = "secrets.example.json";
-        const string SECRETS_SAMPLE_USERNAME = "myname";
-        const string SECRETS_SAMPLE_PASSWORD = "mypassword";
-
-        const string SECRETS_EXAMPLE_CONTENTS = "{\"username\": \"myname\",\""+SECRETS_SAMPLE_USERNAME+"\": \""+SECRETS_SAMPLE_PASSWORD+"\"}";
-        if (!File.Exists(SECRETS_FILE))
-        {
-            Console.Error.WriteLine("Secrets file (" + SECRETS_FILE + ") not found. Use " + SECRETS_EXAMPLE_FILE + " as a starting point.");
-
-            if (!File.Exists(SECRETS_EXAMPLE_FILE))
-            {
-                Console.Error.WriteLine("(The example secrets file did not already exist; one has been created)");
-                File.WriteAllText(SECRETS_EXAMPLE_FILE, SECRETS_EXAMPLE_CONTENTS);
-            }
-
-            Environment.Exit(1);
-        }
-
-        SecretsConfig secrets;
-        try
-        {
-            secrets = JsonConvert.DeserializeObject<SecretsConfig>(File.ReadAllText(SECRETS_FILE));
-        }
-        catch(Exception e)
-        {
-            Console.Error.WriteLine($"There was a problem loading the secrets file - {e.Message} ({e.GetType().FullName})");
-            Console.Error.WriteLine("The secrets file may be corrupted. Correct it and try again.");
-            throw;
-        }
-
-        if(string.IsNullOrEmpty(secrets.username) || secrets.username == SECRETS_SAMPLE_USERNAME || string.IsNullOrEmpty(secrets.password) || secrets.password == SECRETS_SAMPLE_PASSWORD)
-        {
-            Console.Error.WriteLine("The secrets file appears to have either the example username/password, or they're not set.");
-            Console.Error.WriteLine("Add the credentials for a valid Pokemon Trainers Club account to the secrets file.");
-            Environment.Exit(1);
-        }
-
-        return secrets;
     }
 
     private static string ParseOutputFolderFromArgs(string[] args)
