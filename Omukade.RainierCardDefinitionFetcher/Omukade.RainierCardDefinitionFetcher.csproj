@@ -39,6 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="HarmonyX" Version="2.15.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Spectre.Console" Version="0.45.0" />
   </ItemGroup>
@@ -52,10 +53,6 @@
 		  <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\CardDatabase.DataAccess.dll</HintPath>
 		  <Private>False</Private>
 	  </Reference>
-    <Reference Include="FlatBuffers.Core">
-      <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\FlatBuffers.Core.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="MatchLogic">
       <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\MatchLogic.dll</HintPath>
       <Private>False</Private>

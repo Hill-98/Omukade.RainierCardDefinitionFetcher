@@ -81,12 +81,12 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
             IClient client = new ClientBuilder()
                 .WithStage(Stages.PROD)
                 .WithAccessKey(ACCESS_KEY)
-                .WithDeviceInfo(deviceId: DEVICE_ID, deviceType: null, "Windows")
+                .WithDeviceInfo(deviceId: DEVICE_ID, deviceType: "pc", "Windows")
                 .WithInstallationId(CLIENT_ID)
                 .Build();
 
             client.RegisterAsync().Wait();
-            client.MakeSyncCall<string, string, TokenResponse>(client.AuthAsync, tokenData.access_token, "PJWT");
+            client.MakeSyncCall<string, string, TokenResponse>(client.AuthAsync, tokenData.access_token, "PTOK");
 
             return client;
         }
