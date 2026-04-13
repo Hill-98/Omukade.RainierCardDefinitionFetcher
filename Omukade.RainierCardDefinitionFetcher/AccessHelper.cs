@@ -17,12 +17,6 @@
 **************************************************************************/
 
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using TPCI.PTCS;
 using static Omukade.Tools.RainierCardDefinitionFetcher.Manipulators;
 
@@ -32,15 +26,15 @@ namespace Omukade.Tools.RainierCardDefinitionFetcher
     {
         public static PTCSUtils.TokenData GetTokenForManuallyLogin()
         {
-            TPCI.PTCS.ClientData clientData = newWithoutConstructor<TPCI.PTCS.ClientData>();
+            ClientData clientData = newWithoutConstructor<ClientData>();
             clientData.clientID = "tpci-tcg-app";
             clientData.redirectURI = "https://tpcitcgapp/callback";
-            clientData.scope = new string[] { "offline", "screen_name", "openid", "friends" };
+            clientData.scope = ["offline", "screen_name", "openid", "friends"];
 
             const string AUTH_STAGE_1_PREFIX = "https://access.pokemon.com/oauth2/auth";
             const string AUDIENCE_VALUE = "https://op-core.pokemon.com+https://api.friends.pokemon.com";
             const string SELECTED_LANGUAGE = "en";
-            string loginUrl = TPCI.PTCS.PTCSUtils.GetAuthRequest(AUTH_STAGE_1_PREFIX, AUDIENCE_VALUE, clientData, SELECTED_LANGUAGE, "1.33.0", out string challenge, out string verifier);
+            string loginUrl = PTCSUtils.GetAuthRequest(AUTH_STAGE_1_PREFIX, AUDIENCE_VALUE, clientData, SELECTED_LANGUAGE, "x", out string challenge, out string verifier);
 
             HttpClient httpClient = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
             httpClient.DefaultRequestHeaders.Add("User-Agent", @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0");

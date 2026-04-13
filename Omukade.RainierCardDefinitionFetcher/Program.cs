@@ -17,14 +17,11 @@
 **************************************************************************/
 
 using ClientNetworking;
-using ClientNetworking.Models.Account;
 using ClientNetworking.Models.Config;
 using HarmonyLib;
-using Newtonsoft.Json;
 using Omukade.AutoPAR;
 using Omukade.AutoPAR.Rainier;
 using Omukade.Tools.RainierCardDefinitionFetcher;
-using Omukade.Tools.RainierCardDefinitionFetcher.Model;
 using Spectre.Console;
 using static TPCI.PTCS.PTCSUtils;
 
@@ -79,6 +76,8 @@ internal class Program
 
         WriteIfNotQuiet("Initializing AutoPAR...");
         AssemblyLoadInterceptor.Initialize(RainierFetcher.UpdateDirectory);
+
+        Harmony.CreateAndPatchAll(typeof(UnityLogPatcher));
 
         PostParMain(args);
     }

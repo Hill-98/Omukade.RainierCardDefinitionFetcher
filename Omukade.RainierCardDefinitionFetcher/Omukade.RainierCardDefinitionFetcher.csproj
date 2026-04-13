@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Omukade.Tools.RainierCardDefinitionFetcher</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -39,9 +39,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="HarmonyX" Version="2.15.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Spectre.Console" Version="0.45.0" />
+    <PackageReference Include="HarmonyX" Version="2.16.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="Spectre.Console" Version="0.54.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -69,10 +69,14 @@
       <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\TPCI.PTCS.dll</HintPath>
       <Private>False</Private>
     </Reference>
-	<Reference Include="UnityEngine.CoreModule">
-		<HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\UnityEngine.CoreModule.dll</HintPath>
-		<Private>False</Private>
-	</Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(LOCALAPPDATA)\omukade\rainier-shared\rainier-client_PAR\UnityEngine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
